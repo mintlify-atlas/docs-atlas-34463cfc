@@ -1,0 +1,221 @@
+---
+title: 'Development Setup'
+description: 'Set up your local development environment for the Dev-Tree backend'
+---
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- **Node.js** (v16 or higher)
+- **npm** or **yarn** package manager
+- **MongoDB** (local instance or MongoDB Atlas account)
+- **Git** for version control
+
+## Installation
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/HeymerDev/dev-tree-backend.git
+    cd dev-tree-backend
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    Install all required packages from package.json:
+    
+    ```bash
+    npm install
+    ```
+
+    This will install both production dependencies and dev dependencies:
+    
+    **Production Dependencies:**
+    - `express` - Web framework
+    - `mongoose` - MongoDB ODM
+    - `bcrypt` - Password hashing
+    - `jsonwebtoken` - JWT authentication
+    - `cloudinary` - Image upload service
+    - `cors` - Cross-origin resource sharing
+    - `express-validator` - Request validation
+    - `formidable` - Form data parsing
+    - `dotenv` - Environment variables
+    - `slug` - URL slug generation
+    - `uuid` - Unique identifier generation
+
+    **Dev Dependencies:**
+    - `typescript` - TypeScript compiler
+    - `ts-node` - TypeScript execution
+    - `nodemon` - Auto-restart on file changes
+    - `@types/*` - TypeScript type definitions
+  </Step>
+
+  <Step title="Configure environment variables">
+    Create a `.env` file in the root directory with the required variables. See the [Configuration](/development/configuration) page for details.
+  </Step>
+
+  <Step title="Start the development server">
+    ```bash
+    npm run dev
+    ```
+  </Step>
+</Steps>
+
+## NPM Scripts
+
+The project includes several npm scripts for different workflows:
+
+<CodeGroup>
+```bash Development
+# Start development server with hot reload
+npm run dev
+```
+
+```bash Development with API Mode
+# Start dev server with API mode (disables CORS for testing)
+npm run dev:api
+```
+
+```bash Build
+# Compile TypeScript to JavaScript
+npm run build
+```
+
+```bash Production
+# Run the compiled JavaScript (after build)
+npm run start
+```
+</CodeGroup>
+
+<Info>
+The `dev:api` script includes the `--api` flag, which allows API testing tools like Postman or Thunder Client by adding `undefined` to the CORS whitelist.
+</Info>
+
+### Script Details
+
+From `package.json`:
+
+```json
+"scripts": {
+  "test": "echo \"Error: no test specified\" && exit 1",
+  "dev": "nodemon ./src/index.ts",
+  "dev:api": "nodemon ./src/index.ts --api",
+  "build": "tsc",
+  "start": "node ./dist/index.js"
+}
+```
+
+## TypeScript Configuration
+
+The project uses TypeScript with the following configuration from `tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "lib": ["esnext"],
+    "target": "ES6",
+    "moduleResolution": "NodeNext",
+    "module": "NodeNext",
+    "strict": false,
+    "sourceMap": true,
+    "esModuleInterop": true,
+    "declaration": true
+  },
+  "include": ["src/**/*.ts"]
+}
+```
+
+### Key Configuration Options
+
+<Tabs>
+  <Tab title="Compilation">
+    - **outDir**: `./dist` - Compiled JavaScript output directory
+    - **rootDir**: `./src` - TypeScript source files location
+    - **target**: `ES6` - JavaScript version to compile to
+    - **module**: `NodeNext` - Modern Node.js module system
+  </Tab>
+  
+  <Tab title="Type Checking">
+    - **strict**: `false` - Relaxed type checking for flexibility
+    - **esModuleInterop**: `true` - Better CommonJS/ES module compatibility
+    - **declaration**: `true` - Generate .d.ts declaration files
+  </Tab>
+  
+  <Tab title="Development">
+    - **sourceMap**: `true` - Generate source maps for debugging
+    - **moduleResolution**: `NodeNext` - Modern module resolution
+    - **lib**: `["esnext"]` - Latest ECMAScript features
+  </Tab>
+</Tabs>
+
+## Project Structure
+
+After setup, your project structure will look like this:
+
+```
+dev-tree-backend/
+├── src/
+│   ├── config/          # Configuration files
+│   ├── controllers/     # Route controllers
+│   ├── middlewares/     # Express middlewares
+│   ├── models/          # Mongoose models
+│   ├── utils/           # Utility functions
+│   ├── router.ts        # API routes
+│   ├── server.ts        # Express app setup
+│   └── index.ts         # Application entry point
+├── dist/                # Compiled JavaScript (after build)
+├── package.json
+├── tsconfig.json
+└── .env                 # Environment variables
+```
+
+## Development Workflow
+
+<Steps>
+  <Step title="Start the development server">
+    ```bash
+    npm run dev
+    ```
+    
+    This runs nodemon which watches for file changes and automatically restarts the server.
+  </Step>
+
+  <Step title="Make your changes">
+    Edit TypeScript files in the `src/` directory. The server will automatically reload.
+  </Step>
+
+  <Step title="Test your changes">
+    - Use the `dev:api` mode for API testing tools
+    - Server runs on `http://localhost:3000` by default (configurable via `PORT` env variable)
+  </Step>
+
+  <Step title="Build for production">
+    ```bash
+    npm run build
+    ```
+    
+    This compiles TypeScript to JavaScript in the `dist/` directory.
+  </Step>
+</Steps>
+
+<Note>
+The development server uses `nodemon` with `ts-node` to run TypeScript files directly without a separate build step.
+</Note>
+
+## Hot Reload
+
+Nodemon is configured to watch for changes in `.ts` files and automatically restart the server. You don't need to manually stop and restart the development server when you make changes.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Configuration" icon="gear" href="/development/configuration">
+    Set up environment variables and configure services
+  </Card>
+  <Card title="Database" icon="database" href="/development/database">
+    Learn about MongoDB connection and Mongoose models
+  </Card>
+</CardGroup>

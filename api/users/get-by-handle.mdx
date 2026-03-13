@@ -1,0 +1,87 @@
+---
+title: "Get User by Handle"
+api: "GET /:handle"
+description: "Retrieve a user's public profile information by their handle"
+---
+
+## Authentication
+
+<Info>
+This endpoint does not require authentication. It returns public user information.
+</Info>
+
+## Request
+
+### Path Parameters
+
+<ParamField path="handle" type="string" required>
+  The unique handle of the user to retrieve. Handles are URL-safe identifiers (e.g., "john-doe").
+</ParamField>
+
+## Response
+
+<ResponseField name="handle" type="string" required>
+  The user's unique handle (URL-safe identifier)
+</ResponseField>
+
+<ResponseField name="username" type="string" required>
+  The user's display name
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  The user's profile description. Empty string if not set.
+</ResponseField>
+
+<ResponseField name="imageUrl" type="string">
+  URL of the user's profile image. Empty string if not uploaded.
+</ResponseField>
+
+<ResponseField name="links" type="string">
+  JSON string containing the user's social links. Defaults to "[]".
+</ResponseField>
+
+<Note>
+For privacy, this endpoint excludes sensitive fields: password, email, _id, and __v (MongoDB version key).
+</Note>
+
+## Example Request
+
+```bash
+curl -X GET https://api.example.com/john-doe
+```
+
+## Example Response
+
+```json
+{
+  "handle": "john-doe",
+  "username": "John Doe",
+  "description": "Full-stack developer passionate about open source",
+  "imageUrl": "https://res.cloudinary.com/dev-tree/image/123.jpg",
+  "links": "[{\"name\":\"GitHub\",\"url\":\"https://github.com/johndoe\"},{\"name\":\"Twitter\",\"url\":\"https://twitter.com/johndoe\"}]"
+}
+```
+
+## Error Responses
+
+### 404 Not Found
+
+Returned when no user exists with the specified handle.
+
+```json
+{
+  "message": "User not found",
+  "success": false,
+  "status": 404
+}
+```
+
+### 500 Internal Server Error
+
+Returned when there's a server error processing the request.
+
+```json
+{
+  "message": "Internal server error"
+}
+```

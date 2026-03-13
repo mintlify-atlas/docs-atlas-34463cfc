@@ -1,0 +1,115 @@
+---
+title: "Upload Profile Image"
+api: "POST /user/image"
+description: "Upload or update the authenticated user's profile image"
+---
+
+## Authentication
+
+<Warning>
+This endpoint requires authentication. Include a valid JWT token in the Authorization header.
+</Warning>
+
+## Request
+
+### Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for authentication. Format: `Bearer <token>`
+</ParamField>
+
+<ParamField header="Content-Type" type="string" required>
+  Must be `multipart/form-data` for file upload
+</ParamField>
+
+### Form Data
+
+<ParamField body="file" type="file" required>
+  The image file to upload. Uploaded images are stored in Cloudinary under the "dev-tree" folder.
+</ParamField>
+
+<Info>
+The image is uploaded to Cloudinary and assigned a unique UUID as its public ID. The secure URL is then saved to the user's profile.
+</Info>
+
+## Response
+
+### Success Response
+
+<ResponseField name="imageUrl" type="string" required>
+  The secure URL of the uploaded image on Cloudinary
+</ResponseField>
+
+<ResponseField name="message" type="string" required>
+  Confirmation message indicating successful upload
+</ResponseField>
+
+## Example Request
+
+```bash
+curl -X POST https://api.example.com/user/image \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -F "file=@/path/to/profile-picture.jpg"
+```
+
+### JavaScript/Fetch Example
+
+```javascript
+const formData = new FormData();
+formData.append('file', fileInput.files[0]);
+
+fetch('https://api.example.com/user/image', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`
+  },
+  body: formData
+})
+  .then(response => response.json())
+  .then(data => console.log(data.imageUrl));
+```
+
+## Example Response
+
+```json
+{
+  "imageUrl": "https://res.cloudinary.com/dev-tree/image/upload/v1234567890/dev-tree/a1b2c3d4-e5f6-7890-abcd-ef1234567890.jpg",
+  "message": "Image uploaded successfully"
+}
+```
+
+## Error Responses
+
+### 401 Unauthorized
+
+Returned when no token is provided or the token format is invalid.
+
+```json
+{
+  "message": "Unauthorized"
+}
+```
+
+### 404 Not Found
+
+Returned when the user associated with the token is not found.
+
+```json
+{
+  "message": "User not found"
+}
+```
+
+### 500 Internal Server Error
+
+Returned when there's an error uploading to Cloudinary or saving to the database.
+
+```json
+{
+  "message": "Internal server error"
+}
+```
+
+<Note>
+When you upload a new image, it replaces the previous `imageUrl` in your profile. The old image remains in Cloudinary unless manually deleted.
+</Note>

@@ -1,0 +1,317 @@
+---
+title: 'Configuration'
+description: 'Configure environment variables, CORS, and external services'
+---
+
+## Environment Variables
+
+Dev-Tree uses environment variables for configuration. Create a `.env` file in the project root with the following variables:
+
+### Required Variables
+
+```bash .env
+# Server Configuration
+PORT=3000
+
+# Database
+MONGO_URI=mongodb://localhost:27017/devtree
+
+# Frontend URL (for CORS)
+FRONTEND_URL=http://localhost:5173
+
+# JWT Authentication
+JWT_SECRET=your-secret-key-here
+
+# Cloudinary Configuration
+CLOUD_NAME=your-cloudinary-cloud-name
+CLOUDINARY_API_KEY=your-cloudinary-api-key
+CLOUDINARY_API_SECRET=your-cloudinary-api-secret
+```
+
+<Note>
+Replace the placeholder values with your actual credentials. Never commit the `.env` file to version control.
+</Note>
+
+### Variable Descriptions
+
+<Tabs>
+  <Tab title="Server">
+    **PORT**
+    - Default: `3000`
+    - The port number where the Express server will listen
+    - Can be changed to avoid conflicts with other services
+    
+    Example:
+    ```typescript
+    const PORT = process.env.PORT || 3000;
+    
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
+    ```
+  </Tab>
+  
+  <Tab title="Database">
+    **MONGO_URI**
+    - MongoDB connection string
+    - Can be a local MongoDB instance or MongoDB Atlas cluster
+    
+    Local example:
+    ```
+    MONGO_URI=mongodb://localhost:27017/devtree
+    ```
+    
+    MongoDB Atlas example:
+    ```
+    MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/devtree
+    ```
+  </Tab>
+  
+  <Tab title="CORS">
+    **FRONTEND_URL**
+    - The URL of your frontend application
+    - Used for CORS configuration to allow cross-origin requests
+    - Essential for security in production
+    
+    Development:
+    ```
+    FRONTEND_URL=http://localhost:5173
+    ```
+    
+    Production:
+    ```
+    FRONTEND_URL=https://your-frontend-domain.com
+    ```
+  </Tab>
+  
+  <Tab title="Authentication">
+    **JWT_SECRET**
+    - Secret key for signing JSON Web Tokens
+    - Should be a long, random string
+    - Keep this secret and never expose it publicly
+    
+    Generate a secure secret:
+    ```bash
+    node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+    ```
+  </Tab>
+  
+  <Tab title="Cloudinary">
+    **CLOUD_NAME**
+    - Your Cloudinary cloud name
+    
+    **CLOUDINARY_API_KEY**
+    - Your Cloudinary API key
+    
+    **CLOUDINARY_API_SECRET**
+    - Your Cloudinary API secret
+    
+    Get these credentials from your [Cloudinary Dashboard](https://cloudinary.com/console)
+  </Tab>
+</Tabs>
+
+## Loading Environment Variables
+
+The application loads environment variables using the `dotenv` package. This is configured in `src/utils/loadEnv.ts`:
+
+```typescript
+import dotenv from "dotenv";
+dotenv.config();
+```
+
+This file is imported at the top of `src/server.ts`:
+
+```typescript
+import "./utils/loadEnv";
+
+import express from "express";
+import cors from "cors";
+import router from "./router";
+import { connectDB } from "./config/db";
+import { corsConfig } from "./config/cors";
+
+export const app = express();
+
+app.use(cors(corsConfig));
+connectDB(); // Connect to MongoDB
+
+app.use(express.json());
+app.use("/", router);
+```
+
+<Info>
+The `loadEnv` module is imported first to ensure environment variables are available before any other modules that depend on them.
+</Info>
+
+## CORS Configuration
+
+The CORS (Cross-Origin Resource Sharing) configuration is defined in `src/config/cors.ts`:
+
+```typescript
+import { CorsOptions } from "cors";
+
+export const corsConfig: CorsOptions = {
+  origin: function(origin, callback) {
+    const whitelist = [process.env.FRONTEND_URL]
+
+    if(process.argv.includes("--api")) {
+      whitelist.push(undefined)
+    }
+    
+    if(whitelist.includes(origin)) {
+      callback(null, true)
+    } else {
+      callback(new Error("Error de CORS"))
+    }
+  } 
+}
+```
+
+### How CORS Works
+
+<Steps>
+  <Step title="Whitelist Configuration">
+    The CORS configuration maintains a whitelist of allowed origins. By default, only the `FRONTEND_URL` from environment variables is allowed.
+  </Step>
+
+  <Step title="API Mode">
+    When the server is started with the `--api` flag (using `npm run dev:api`), it adds `undefined` to the whitelist. This allows API testing tools like Postman, Thunder Client, or cURL to access the API.
+    
+    ```bash
+    npm run dev:api  # Enables API testing tools
+    ```
+  </Step>
+
+  <Step title="Origin Validation">
+    For each incoming request, the origin is checked against the whitelist:
+    - If the origin is in the whitelist, the request is allowed
+    - Otherwise, a CORS error is returned
+  </Step>
+</Steps>
+
+<Warning>
+In production, never use the `--api` flag as it allows requests from any origin, which is a security risk.
+</Warning>
+
+### CORS Usage Examples
+
+<CodeGroup>
+```bash Development (Frontend Only)
+# Only allows requests from FRONTEND_URL
+npm run dev
+```
+
+```bash Development (API Testing)
+# Allows requests from FRONTEND_URL and API testing tools
+npm run dev:api
+```
+
+```bash Production
+# Only allows requests from FRONTEND_URL
+npm start
+```
+</CodeGroup>
+
+## Cloudinary Configuration
+
+Cloudinary is configured for image uploads in `src/config/cloudinary.ts`:
+
+```typescript
+import { v2 as cloudinary } from "cloudinary";
+
+cloudinary.config({
+  cloud_name: process.env.CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+export default cloudinary;
+```
+
+### Setting Up Cloudinary
+
+<Steps>
+  <Step title="Create a Cloudinary Account">
+    Sign up at [cloudinary.com](https://cloudinary.com) if you don't have an account.
+  </Step>
+
+  <Step title="Get Your Credentials">
+    Navigate to your [Cloudinary Dashboard](https://cloudinary.com/console) and copy:
+    - Cloud Name
+    - API Key
+    - API Secret
+  </Step>
+
+  <Step title="Add to .env File">
+    ```bash
+    CLOUD_NAME=your-cloud-name
+    CLOUDINARY_API_KEY=your-api-key
+    CLOUDINARY_API_SECRET=your-api-secret
+    ```
+  </Step>
+
+  <Step title="Use in Your Application">
+    The Cloudinary instance is now configured and can be imported:
+    
+    ```typescript
+    import cloudinary from "./config/cloudinary";
+    
+    // Upload an image
+    const result = await cloudinary.uploader.upload(imagePath);
+    ```
+  </Step>
+</Steps>
+
+### Cloudinary Features Used
+
+- **Image Uploads**: User profile pictures and other images
+- **Automatic Optimization**: Images are automatically optimized for web
+- **Cloud Storage**: Relieves server storage burden
+- **CDN Delivery**: Fast image delivery through Cloudinary's CDN
+
+<Info>
+Cloudinary offers a generous free tier that's suitable for development and small projects.
+</Info>
+
+## Configuration Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Security" icon="shield">
+    - Never commit `.env` files to version control
+    - Use strong, random values for `JWT_SECRET`
+    - Rotate secrets regularly in production
+    - Use different credentials for dev and production
+  </Card>
+  
+  <Card title="Environment Management" icon="layer-group">
+    - Create `.env.example` with placeholder values
+    - Document all required environment variables
+    - Use different `.env` files for different environments
+    - Validate environment variables at startup
+  </Card>
+  
+  <Card title="CORS" icon="globe">
+    - Always specify allowed origins in production
+    - Never use wildcard (`*`) origins in production
+    - Use `--api` flag only in development
+    - Test CORS configuration thoroughly
+  </Card>
+  
+  <Card title="Database" icon="database">
+    - Use MongoDB Atlas for production
+    - Enable authentication on MongoDB
+    - Use connection pooling
+    - Set up database backups
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Database Setup" icon="database" href="/development/database">
+    Learn about MongoDB connection and Mongoose models
+  </Card>
+  <Card title="Development Setup" icon="code" href="/development/setup">
+    Set up your development environment
+  </Card>
+</CardGroup>

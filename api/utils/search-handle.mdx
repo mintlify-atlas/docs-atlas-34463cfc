@@ -1,0 +1,142 @@
+---
+title: 'Search Handle'
+api: 'POST /search'
+description: 'Check if a user handle is available for registration'
+---
+
+## Endpoint
+
+<ParamField path="method" type="string">
+  POST
+</ParamField>
+
+<ParamField path="endpoint" type="string">
+  /search
+</ParamField>
+
+## Description
+
+This endpoint allows you to check whether a specific handle is available for use. It searches the database to determine if a handle has already been claimed by another user.
+
+<Info>
+  This endpoint is useful for providing real-time validation during user registration or profile updates.
+</Info>
+
+## Request Body
+
+<ParamField body="handle" type="string" required>
+  The handle to check for availability. This field is required and cannot be empty.
+</ParamField>
+
+## Response
+
+### Success Response (200)
+
+Returned when the handle is available for use.
+
+<ResponseField name="message" type="string">
+  Success message indicating the handle is available
+</ResponseField>
+
+```json
+{
+  "message": "Handle is available"
+}
+```
+
+### Error Responses
+
+#### Handle Already Exists (409)
+
+Returned when the requested handle is already taken by another user.
+
+<ResponseField name="message" type="string">
+  Error message indicating the handle already exists
+</ResponseField>
+
+```json
+{
+  "message": "Handle already exists {handle}"
+}
+```
+
+#### Validation Error (400)
+
+Returned when the handle parameter is missing or empty.
+
+<ResponseField name="errors" type="array">
+  Array of validation error objects
+</ResponseField>
+
+```json
+{
+  "errors": [
+    {
+      "msg": "Handle is required",
+      "param": "handle",
+      "location": "body"
+    }
+  ]
+}
+```
+
+#### Internal Server Error (500)
+
+Returned when an unexpected error occurs on the server.
+
+<ResponseField name="message" type="string">
+  Error message describing the server error
+</ResponseField>
+
+```json
+{
+  "message": "Internal server error"
+}
+```
+
+## Example Request
+
+```bash curl
+curl -X POST https://api.example.com/search \
+  -H "Content-Type: application/json" \
+  -d '{
+    "handle": "johndoe"
+  }'
+```
+
+```javascript
+const response = await fetch('https://api.example.com/search', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    handle: 'johndoe'
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+## Example Response
+
+### Available Handle
+
+```json
+{
+  "message": "Handle is available"
+}
+```
+
+### Handle Taken
+
+```json
+{
+  "message": "Handle already exists johndoe"
+}
+```
+
+<Note>
+  The handle check is case-sensitive and matches exactly as stored in the database.
+</Note>

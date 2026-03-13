@@ -1,0 +1,65 @@
+---
+title: "Introduction"
+description: "Backend API service for Dev-Tree, providing user authentication and profile management with handle-based routing"
+---
+
+## Welcome to Dev-Tree Backend
+
+Dev-Tree Backend is a modern Express.js API service built with TypeScript, providing a robust foundation for user authentication and profile management. The service features handle-based user routing, JWT authentication, and seamless integration with MongoDB and Cloudinary for data persistence and image uploads.
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="JWT Authentication" icon="shield-check" href="/concepts/authentication">
+    Secure token-based authentication system for user sessions
+  </Card>
+  <Card title="Handle-Based Profiles" icon="user" href="/concepts/handles">
+    Unique, URL-friendly handles for each user profile
+  </Card>
+  <Card title="Profile Management" icon="pen-to-square" href="/concepts/user-profiles">
+    Complete user profile system with links and descriptions
+  </Card>
+  <Card title="Image Upload" icon="image" href="/api/users/upload-image">
+    Cloudinary integration for profile image management
+  </Card>
+</CardGroup>
+
+## Quick Overview
+
+Dev-Tree Backend provides RESTful endpoints for:
+
+- **User Registration & Authentication** - Create accounts and manage sessions with JWT tokens
+- **Profile Management** - Update user profiles with handles, descriptions, and social links
+- **Handle Search** - Validate handle availability before registration
+- **Image Uploads** - Store and serve user profile images via Cloudinary
+
+## Architecture
+
+The service is structured around Express.js with TypeScript, featuring:
+
+- **Controllers** - Business logic for authentication and user management
+- **Models** - MongoDB/Mongoose schemas for data persistence
+- **Middlewares** - JWT authentication and request validation
+- **Routes** - RESTful API endpoints with express-validator
+- **Configuration** - Centralized config for database, CORS, and cloud services
+
+## Get Started
+
+Ready to set up the Dev-Tree Backend API?
+
+<Card title="Quickstart Guide" icon="rocket" href="/quickstart">
+  Get the API running locally in minutes
+</Card>
+
+## API Reference
+
+Explore the complete API documentation:
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key" href="/api/auth/register">
+    Register and login endpoints
+  </Card>
+  <Card title="User Management" icon="users" href="/api/users/get-current-user">
+    Profile and image management
+  </Card>
+</CardGroup>

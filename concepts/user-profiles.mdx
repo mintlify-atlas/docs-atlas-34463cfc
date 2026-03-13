@@ -1,0 +1,412 @@
+---
+title: 'User Profiles'
+description: 'User model structure, profile fields, and links management system'
+icon: 'user'
+---
+
+## Overview
+
+The User model is the core data structure in Dev-Tree Backend, storing user credentials, profile information, and social links. Built with Mongoose, it provides validation, uniqueness constraints, and flexible profile customization.
+
+<CardGroup cols={2}>
+  <Card title="User Schema" icon="database">
+    MongoDB model with validation and constraints
+  </Card>
+  <Card title="Profile Fields" icon="id-card">
+    Username, handle, description, and profile image
+  </Card>
+  <Card title="Links Management" icon="link">
+    JSON-stored array of social and custom links
+  </Card>
+  <Card title="Security" icon="lock">
+    Password hashing and email validation
+  </Card>
+</CardGroup>
+
+## User Model Schema
+
+The User model defines the complete structure of user profiles in the system.
+
+```typescript src/models/User.ts
+import mongoose, { Schema, Document } from "mongoose";
+
+export interface UserInterface extends Document {
+  handle: string;
+  username: string;
+  email: string;
+  password: string;
+  description: string;
+  imageUrl?: string;
+  links: string
+}
+
+const userSchema = new Schema({
+  handle: {
+    type: String,
+    required: true,
+    trim: true,
+    unique: true,
+  },
+  username: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    match: /.+\@.+\..+/,
+    trim: true,
+  },
+  password: {
+    type: String,
+    required: true,
+    minLength: 6,
+    trim: true,
+  },
+  description: {
+    type: String,
+    required: false,
+    default: "",
+    trim: true,
+  },
+  imageUrl: {
+    type: String,
+    required: false,
+    trim: true,
+    default: "",
+  },
+  links: {
+    type: String,
+    default: "[]"
+  }
+});
+
+const User = mongoose.model<UserInterface>("User", userSchema);
+export default User;
+```
+
+## Profile Fields
+
+### Required Fields
+
+<Accordion title="handle">
+  **Type:** `string`  
+  **Constraints:** Required, unique, trimmed  
+  **Description:** URL-friendly identifier for the user's profile page. Must be unique across all users.
+  
+  ```typescript
+  handle: "johndoe"
+  // Profile accessible at: /:handle
+  ```
+</Accordion>
+
+<Accordion title="username">
+  **Type:** `string`  
+  **Constraints:** Required, trimmed  
+  **Description:** Display name shown on the user's profile. Can contain spaces and special characters.
+  
+  ```typescript
+  username: "John Doe"
+  ```
+</Accordion>
+
+<Accordion title="email">
+  **Type:** `string`  
+  **Constraints:** Required, unique, valid email format, trimmed  
+  **Description:** User's email address for authentication. Validated with regex pattern.
+  
+  ```typescript
+  email: "john@example.com"
+  // Pattern: /.+\@.+\..+/
+  ```
+</Accordion>
+
+<Accordion title="password">
+  **Type:** `string`  
+  **Constraints:** Required, minimum 6 characters, trimmed  
+  **Description:** Hashed password for authentication. Never stored in plain text.
+  
+  <Warning>
+    Always hash passwords using `hashPassword()` before saving to the database.
+  </Warning>
+</Accordion>
+
+### Optional Fields
+
+<Accordion title="description">
+  **Type:** `string`  
+  **Default:** `""` (empty string)  
+  **Description:** User bio or description displayed on their profile page.
+  
+  ```typescript
+  description: "Full-stack developer passionate about open source"
+  ```
+</Accordion>
+
+<Accordion title="imageUrl">
+  **Type:** `string`  
+  **Default:** `""` (empty string)  
+  **Description:** URL to the user's profile image, typically stored on Cloudinary.
+  
+  ```typescript
+  imageUrl: "https://res.cloudinary.com/dev-tree/image/upload/v1234567890/profile.jpg"
+  ```
+</Accordion>
+
+<Accordion title="links">
+  **Type:** `string` (JSON array)  
+  **Default:** `"[]"` (empty array)  
+  **Description:** JSON-stringified array of user's social and custom links.
+  
+  ```typescript
+  links: '[{"url":"https://github.com/johndoe","title":"GitHub"}]'
+  ```
+</Accordion>
+
+## Creating a User
+
+Users are created during registration with validation and uniqueness checks:
+
+```typescript src/controllers/index.ts
+export const registerUser = async (req: Request, res: Response) => {
+  const slug = (await import("slug")).default;
+  const { username, email, password } = req.body;
+  
+  // Check if email already exists
+  const userExists = await User.findOne({ email });
+  if (userExists) {
+    res.status(409).json({ message: "Email already exists" });
+    return;
+  }
+
+  // Generate and validate handle
+  const handle = slug(req.body.handle);
+  const handleExists = await User.findOne({ handle });
+  if (handleExists) {
+    res.status(409).json({ message: "Handle already exists" });
+    return;
+  }
+
+  // Hash password and create user
+  const hash = await hashPassword(password);
+  await User.create({ username, email, password: hash, handle });
+
+  res.status(201).json({ message: "User created successfully" });
+};
+```
+
+<Note>
+  The `slug` library is used to convert handles into URL-safe formats (lowercase, hyphens instead of spaces, etc.).
+</Note>
+
+## Fetching User Profiles
+
+### Get User by Handle
+
+Public endpoint to fetch user profiles by their handle:
+
+```typescript src/controllers/index.ts
+export const getUserByHandle = async (req: Request, res: Response) => {
+  try {
+    const { handle } = req.params;
+    const user = await User.findOne({ handle }).select("-password -email -__v -_id");
+    
+    if (!user) {
+      res.status(404).json({ message: "User not found", success: false, status: 404 });
+      return;
+    }
+    
+    res.status(200).json(user);
+  } catch (error) {
+    new Error(error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+```
+
+<Warning>
+  Sensitive fields (password, email, _id, __v) are excluded from public profile responses using `.select("-password -email -__v -_id")`.
+</Warning>
+
+### Get Authenticated User
+
+Protected endpoint to fetch the current user's full profile:
+
+```typescript src/controllers/index.ts
+export const getUser = async (req: Request, res: Response) => {
+  res.status(200).json(req.user);
+};
+```
+
+```typescript src/router.ts
+router.get("/user", authenticate, getUser);
+```
+
+## Updating User Profiles
+
+Authenticated users can update their profile information:
+
+```typescript src/controllers/index.ts
+export const updateUser = async (req: Request, res: Response) => {
+  const slug = (await import("slug")).default;
+  
+  try {
+    const { description, links } = req.body;
+    const handle = slug(req.body.handle);
+    
+    // Check if new handle is already taken by another user
+    const handleExists = await User.findOne({ handle });
+    if (handleExists && handleExists.email !== req.user.email) {
+      res.status(409).json({ message: "Handle already exists" });
+      return;
+    }
+
+    // Update user fields
+    req.user.description = description;
+    req.user.handle = handle;
+    req.user.links = links;
+    await req.user.save();
+    
+    res.status(200).json({ message: "User updated successfully" });
+  } catch (error) {
+    new Error(error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+```
+
+<Note>
+  The update endpoint allows users to change their handle, but validates that the new handle isn't already taken by another user.
+</Note>
+
+## Profile Image Upload
+
+Users can upload profile images, which are stored on Cloudinary:
+
+```typescript src/controllers/index.ts
+export const uploadImage = async (req: Request, res: Response) => {
+  const form = formidable({ multiples: false });
+
+  try {
+    form.parse(req, (err, fields, files) => {
+      cloudinary.uploader.upload(
+        files.file[0].filepath,
+        {
+          folder: "dev-tree",
+          public_id: uuid(),
+        },
+        async function (error, result) {
+          if (error) {
+            res.status(500).json({ message: "Internal server error" });
+          }
+          if (result) {
+            req.user.imageUrl = result.secure_url;
+            await req.user.save();
+            res.status(200).json({
+              imageUrl: result.secure_url,
+              message: "Image uploaded successfully",
+            });
+          }
+        }
+      );
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+```
+
+## Links Management
+
+Links are stored as a JSON string and can contain multiple social and custom links.
+
+### Link Structure
+
+```typescript
+type Link = {
+  url: string;
+  title: string;
+};
+
+// Stored as JSON string in database
+links: '[{"url":"https://github.com/user","title":"GitHub"},{"url":"https://twitter.com/user","title":"Twitter"}]'
+```
+
+### Updating Links
+
+```typescript
+const links = [
+  { url: "https://github.com/johndoe", title: "GitHub" },
+  { url: "https://linkedin.com/in/johndoe", title: "LinkedIn" },
+  { url: "https://johndoe.com", title: "Portfolio" }
+];
+
+// Send as JSON string
+await updateUser({
+  links: JSON.stringify(links),
+  description: "Full-stack developer",
+  handle: "johndoe"
+});
+```
+
+## API Routes
+
+```typescript src/router.ts
+import { authenticate } from "./middlewares/auth";
+import { getUser, getUserByHandle, updateUser, uploadImage } from "./controllers";
+
+// Public route - get user by handle
+router.get("/:handle", getUserByHandle);
+
+// Protected routes
+router.get("/user", authenticate, getUser);
+router.patch("/user", authenticate, updateUser);
+router.post("/user/image", authenticate, uploadImage);
+```
+
+## Example API Requests
+
+### Get Public Profile
+
+```bash
+curl https://api.devtree.com/johndoe
+```
+
+### Response
+
+```json
+{
+  "handle": "johndoe",
+  "username": "John Doe",
+  "description": "Full-stack developer passionate about open source",
+  "imageUrl": "https://res.cloudinary.com/dev-tree/image/upload/v1234/profile.jpg",
+  "links": "[{\"url\":\"https://github.com/johndoe\",\"title\":\"GitHub\"}]"
+}
+```
+
+### Update Profile
+
+```bash
+curl -X PATCH https://api.devtree.com/user \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "handle": "johndoe",
+    "description": "Updated bio",
+    "links": "[{\"url\":\"https://github.com/johndoe\",\"title\":\"GitHub\"}]"
+  }'
+```
+
+## Validation Rules
+
+| Field | Validation |
+|-------|------------|
+| `handle` | Required, unique, URL-safe (via slug) |
+| `username` | Required |
+| `email` | Required, unique, valid email format |
+| `password` | Required, minimum 6 characters |
+| `description` | Optional, trimmed |
+| `imageUrl` | Optional, valid URL |
+| `links` | Optional, valid JSON string |

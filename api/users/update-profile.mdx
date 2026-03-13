@@ -1,0 +1,131 @@
+---
+title: "Update User Profile"
+api: "PATCH /user"
+description: "Update the authenticated user's profile information"
+---
+
+## Authentication
+
+<Warning>
+This endpoint requires authentication. Include a valid JWT token in the Authorization header.
+</Warning>
+
+## Request
+
+### Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for authentication. Format: `Bearer <token>`
+</ParamField>
+
+### Body Parameters
+
+<ParamField body="handle" type="string" required>
+  The new handle for the user. Will be converted to a URL-safe slug format. Must be unique across all users.
+</ParamField>
+
+<ParamField body="description" type="string" required>
+  The user's profile description or bio.
+</ParamField>
+
+<ParamField body="links" type="string">
+  JSON string containing the user's social links and external profiles.
+</ParamField>
+
+<Info>
+The handle will be automatically slugified (converted to lowercase, spaces replaced with hyphens, special characters removed).
+</Info>
+
+## Response
+
+### Success Response
+
+<ResponseField name="message" type="string">
+  Confirmation message indicating successful update
+</ResponseField>
+
+## Example Request
+
+```bash
+curl -X PATCH https://api.example.com/user \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "handle": "john-doe",
+    "description": "Full-stack developer passionate about open source",
+    "links": "[{\"name\":\"GitHub\",\"url\":\"https://github.com/johndoe\"}]"
+  }'
+```
+
+## Example Response
+
+```json
+{
+  "message": "User updated successfully"
+}
+```
+
+## Error Responses
+
+### 400 Bad Request
+
+Returned when validation fails for required fields.
+
+```json
+{
+  "errors": [
+    {
+      "msg": "Handle is required",
+      "param": "handle"
+    },
+    {
+      "msg": "Description is required",
+      "param": "description"
+    }
+  ]
+}
+```
+
+### 401 Unauthorized
+
+Returned when no token is provided or the token format is invalid.
+
+```json
+{
+  "message": "Unauthorized"
+}
+```
+
+### 404 Not Found
+
+Returned when the user associated with the token is not found.
+
+```json
+{
+  "message": "User not found"
+}
+```
+
+### 409 Conflict
+
+Returned when the requested handle is already taken by another user.
+
+```json
+{
+  "message": "Handle already exists"
+}
+```
+
+<Note>
+You can update your own handle to the same value without triggering a conflict. The conflict only occurs if another user already has the handle you're trying to claim.
+</Note>
+
+### 500 Internal Server Error
+
+Returned when there's a server error processing the request.
+
+```json
+{
+  "message": "Internal server error"
+}
+```

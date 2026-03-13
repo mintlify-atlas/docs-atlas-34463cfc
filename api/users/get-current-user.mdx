@@ -1,0 +1,108 @@
+---
+title: "Get Current User"
+api: "GET /user"
+description: "Retrieve the authenticated user's profile information"
+---
+
+## Authentication
+
+<Warning>
+This endpoint requires authentication. Include a valid JWT token in the Authorization header.
+</Warning>
+
+## Request
+
+No request parameters or body required. The user is identified from the JWT token provided in the Authorization header.
+
+### Headers
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for authentication. Format: `Bearer <token>`
+</ParamField>
+
+## Response
+
+<ResponseField name="handle" type="string" required>
+  The user's unique handle (URL-safe identifier)
+</ResponseField>
+
+<ResponseField name="username" type="string" required>
+  The user's display name
+</ResponseField>
+
+<ResponseField name="email" type="string" required>
+  The user's email address
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  The user's profile description. Defaults to empty string if not set.
+</ResponseField>
+
+<ResponseField name="imageUrl" type="string">
+  URL of the user's profile image. Defaults to empty string if not uploaded.
+</ResponseField>
+
+<ResponseField name="links" type="string">
+  JSON string containing the user's social links. Defaults to "[]".
+</ResponseField>
+
+<ResponseField name="_id" type="string" required>
+  MongoDB ObjectId of the user
+</ResponseField>
+
+<Note>
+The password field is excluded from the response for security purposes.
+</Note>
+
+## Example Request
+
+```bash
+curl -X GET https://api.example.com/user \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+## Example Response
+
+```json
+{
+  "_id": "60d5ec49f1b2c72b8c8e4f1a",
+  "handle": "john-doe",
+  "username": "John Doe",
+  "email": "john@example.com",
+  "description": "Full-stack developer",
+  "imageUrl": "https://res.cloudinary.com/dev-tree/image/123.jpg",
+  "links": "[{\"name\":\"GitHub\",\"url\":\"https://github.com/johndoe\"}]"
+}
+```
+
+## Error Responses
+
+### 401 Unauthorized
+
+Returned when no token is provided or the token format is invalid.
+
+```json
+{
+  "message": "Unauthorized"
+}
+```
+
+### 404 Not Found
+
+Returned when the user associated with the token is not found in the database.
+
+```json
+{
+  "message": "User not found"
+}
+```
+
+### 500 Internal Server Error
+
+Returned when there's a server error processing the request.
+
+```json
+{
+  "message": "Internal server error"
+}
+```

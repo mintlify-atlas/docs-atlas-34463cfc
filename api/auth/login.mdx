@@ -1,0 +1,97 @@
+---
+title: 'Login'
+api: 'POST /auth/login'
+description: 'Authenticate user and receive JWT token'
+---
+
+## Endpoint
+
+```
+POST /auth/login
+```
+
+Authenticates a user with email and password, returning a JWT token for subsequent authenticated requests.
+
+## Request Body
+
+<ParamField body="email" type="string" required>
+  User's registered email address.
+  
+  **Validation:** Must be a valid email format
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  User's password.
+  
+  **Validation:** Cannot be empty
+</ParamField>
+
+## Response
+
+<ResponseField name="token" type="string">
+  JWT authentication token to be used in subsequent API requests
+</ResponseField>
+
+## Status Codes
+
+- `200` - Login successful, token returned
+- `400` - Validation error (invalid input)
+- `401` - Invalid credentials (wrong password)
+- `404` - Invalid credentials (email not found)
+
+## Error Responses
+
+### Invalid Credentials (Email Not Found)
+```json
+{
+  "message": "Invalid credentials"
+}
+```
+**Status Code:** `404`
+
+### Invalid Credentials (Wrong Password)
+```json
+{
+  "message": "Invalid credentials"
+}
+```
+**Status Code:** `401`
+
+### Validation Errors
+
+<Warning>
+Validation errors return a `400` status code with specific error messages:
+- "Invalid email format"
+- "Password is required"
+</Warning>
+
+## Example Request
+
+```bash curl
+curl -X POST http://localhost:4000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "john@example.com",
+    "password": "securepass123"
+  }'
+```
+
+## Example Response
+
+### Success Response (200)
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjYxNGU5MzA4ZjM0MjU3MDAyOGI0ZTk1ZCIsImlhdCI6MTYzMjQ4MzE0NH0.K7h8P9mE4ZxJ5L3nM2kQ1R6v8YtN4pS7fX9jW2bC5dE"
+}
+```
+
+<Note>
+The returned JWT token should be included in the `Authorization` header as a Bearer token for authenticated endpoints:
+```
+Authorization: Bearer <token>
+```
+</Note>
+
+<Note>
+For security reasons, both "user not found" and "wrong password" errors return the same generic "Invalid credentials" message to prevent user enumeration attacks.
+</Note>

@@ -1,0 +1,258 @@
+---
+title: 'Authentication'
+description: 'JWT-based authentication system with token generation and middleware protection'
+icon: 'shield-halved'
+---
+
+## Overview
+
+Dev-Tree Backend uses JSON Web Tokens (JWT) for stateless authentication. The system consists of token generation utilities, authentication middleware, and password hashing for secure user authentication.
+
+<CardGroup cols={2}>
+  <Card title="Token Generation" icon="key">
+    JWT tokens with 60-day expiration for persistent sessions
+  </Card>
+  <Card title="Auth Middleware" icon="shield">
+    Automatic token validation and user attachment to requests
+  </Card>
+  <Card title="Password Security" icon="lock">
+    BCrypt hashing with 10 salt rounds for secure storage
+  </Card>
+  <Card title="Bearer Authentication" icon="id-badge">
+    Standard Authorization header with Bearer scheme
+  </Card>
+</CardGroup>
+
+## JWT Token Generation
+
+The JWT utility provides a simple function to generate signed tokens with user payloads.
+
+### Implementation
+
+```typescript src/utils/jwt.ts
+import jwt, { JwtPayload } from "jsonwebtoken";
+
+export const generateJWT = (payload: JwtPayload) => {
+  const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "60d" });
+  return token;
+}
+```
+
+<Note>
+  Tokens expire after 60 days. The `JWT_SECRET` environment variable must be set for token signing and verification.
+</Note>
+
+### Usage Example
+
+Tokens are generated during user login after successful credential verification:
+
+```typescript src/controllers/index.ts
+export const login = async (req: Request, res: Response) => {
+  const { email, password } = req.body;
+  
+  // Validate user credentials
+  const userExists = await User.findOne({ email });
+  if (!userExists) {
+    res.status(404).json({ message: "Invalid credentials" });
+    return;
+  }
+
+  const isValidPassword = await comparePassword(password, userExists.password);
+  if (!isValidPassword) {
+    res.status(401).json({ message: "Invalid credentials" });
+    return;
+  }
+
+  // Generate JWT token
+  const token = generateJWT({ id: userExists._id });
+  res.status(200).json({ token });
+};
+```
+
+## Password Hashing
+
+Passwords are hashed using BCrypt before storage to ensure security.
+
+```typescript src/utils/auth.ts
+import bcrypt from 'bcrypt';
+
+export const hashPassword = async (password: string): Promise<string> => {
+  const saltRounds = await bcrypt.genSalt(10);
+  return await bcrypt.hash(password, saltRounds);
+};
+
+export const comparePassword = async (password: string, hash: string): Promise<boolean> => {
+  return await bcrypt.compare(password, hash);
+};
+```
+
+<Warning>
+  Never store plain-text passwords. Always use `hashPassword` before saving user credentials to the database.
+</Warning>
+
+## Authentication Middleware
+
+The authentication middleware validates JWT tokens and attaches the user object to the request.
+
+### Middleware Implementation
+
+```typescript src/middlewares/auth.ts
+import { NextFunction, Request, Response } from "express";
+import User, { UserInterface } from "../models/User";
+import jwt from "jsonwebtoken";
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: UserInterface;
+    }
+  }
+}
+
+export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
+  const bearer = req.headers.authorization;
+
+  if(!bearer) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
+
+  const token = bearer.split(" ")[1];
+
+  if(!token) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if(typeof decoded === "object" && decoded.id) {
+      const user = await User.findById(decoded.id).select("-password");
+      if(!user) {
+        res.status(404).json({ message: "User not found" });
+        return;
+      }
+      req.user = user;
+      next();
+    }
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error" });
+    return;
+  }
+}
+```
+
+### How It Works
+
+<Accordion title="Step 1: Extract Bearer Token">
+  The middleware reads the `Authorization` header and extracts the token from the Bearer scheme:
+  ```
+  Authorization: Bearer <token>
+  ```
+</Accordion>
+
+<Accordion title="Step 2: Verify Token">
+  The token is verified using the `JWT_SECRET`. If invalid or expired, authentication fails.
+</Accordion>
+
+<Accordion title="Step 3: Fetch User">
+  The user ID from the decoded token is used to fetch the user from the database. The password field is excluded from the result.
+</Accordion>
+
+<Accordion title="Step 4: Attach User to Request">
+  The user object is attached to `req.user`, making it available to subsequent route handlers.
+</Accordion>
+
+## Protected Routes
+
+Protect routes by adding the `authenticate` middleware:
+
+```typescript src/router.ts
+import { authenticate } from "./middlewares/auth";
+
+// Public route
+router.post("/auth/login", login);
+
+// Protected routes
+router.get("/user", authenticate, getUser);
+router.patch("/user", authenticate, updateUser);
+router.post("/user/image", authenticate, uploadImage);
+```
+
+## Complete Registration Flow
+
+Here's how authentication works during user registration:
+
+```typescript src/controllers/index.ts
+export const registerUser = async (req: Request, res: Response) => {
+  const { username, email, password, handle } = req.body;
+  
+  // Check if email exists
+  const userExists = await User.findOne({ email });
+  if (userExists) {
+    res.status(409).json({ message: "Email already exists" });
+    return;
+  }
+
+  // Hash password before storage
+  const hash = await hashPassword(password);
+  
+  // Create user with hashed password
+  await User.create({ username, email, password: hash, handle });
+  res.status(201).json({ message: "User created successfully" });
+};
+```
+
+## API Request Example
+
+### Login Request
+
+```bash
+curl -X POST https://api.devtree.com/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "password": "securepass123"
+  }'
+```
+
+### Response
+
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+### Using the Token
+
+```bash
+curl -X GET https://api.devtree.com/user \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+## Error Handling
+
+The authentication system returns specific status codes for different error scenarios:
+
+| Status Code | Scenario |
+|-------------|----------|
+| `401` | Missing or invalid token |
+| `404` | User not found in database |
+| `500` | Token verification error or server error |
+
+<Note>
+  The middleware automatically excludes the password field when fetching users using `.select("-password")`.
+</Note>
+
+## Environment Variables
+
+Required environment variables for authentication:
+
+```bash
+JWT_SECRET=your-secret-key-here
+```
+
+<Warning>
+  Use a strong, randomly generated secret in production. Never commit `JWT_SECRET` to version control.
+</Warning>

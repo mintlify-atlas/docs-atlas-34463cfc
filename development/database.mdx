@@ -1,0 +1,539 @@
+---
+title: 'Database'
+description: 'MongoDB connection, Mongoose models, and schema design'
+---
+
+## MongoDB Connection
+
+Dev-Tree uses MongoDB as its database and Mongoose as the ODM (Object Data Modeling) library. The database connection is managed in `src/config/db.ts`:
+
+```typescript
+import mongoose from "mongoose";
+
+export const connectDB = async () => {
+  try {
+    const conection = await mongoose.connect(process.env.MONGO_URI as string);
+    const url = `${conection.connection.host}:${conection.connection.port}`;
+    console.log("MongoDB connected successfully");
+  } catch (error) {
+    console.error("MongoDB connection failed", error);
+    process.exit(1); // Exit the process with failure
+  }
+}
+```
+
+### Connection Flow
+
+<Steps>
+  <Step title="Environment Variable">
+    The connection reads the MongoDB URI from `process.env.MONGO_URI`. This should be set in your `.env` file:
+    
+    ```bash
+    MONGO_URI=mongodb://localhost:27017/devtree
+    ```
+  </Step>
+
+  <Step title="Async Connection">
+    Mongoose connects asynchronously using `mongoose.connect()`. The connection attempt is wrapped in a try-catch block for error handling.
+  </Step>
+
+  <Step title="Success Handling">
+    On successful connection, the function logs a success message with the host and port information.
+  </Step>
+
+  <Step title="Error Handling">
+    If the connection fails:
+    - The error is logged to the console
+    - The process exits with code 1 (failure)
+    - This prevents the server from starting with no database connection
+  </Step>
+</Steps>
+
+### Integration with Express
+
+The database connection is established when the Express app starts in `src/server.ts`:
+
+```typescript
+import "./utils/loadEnv";
+
+import express from "express";
+import cors from "cors";
+import router from "./router";
+import { connectDB } from "./config/db";
+import { corsConfig } from "./config/cors";
+
+export const app = express();
+
+app.use(cors(corsConfig));
+connectDB(); // Connect to MongoDB
+
+app.use(express.json());
+app.use("/", router);
+```
+
+<Info>
+The `connectDB()` function is called early in the server setup to ensure database connectivity before handling any requests.
+</Info>
+
+## Database Setup Options
+
+<Tabs>
+  <Tab title="Local MongoDB">
+    ### Local Installation
+    
+    Install MongoDB on your local machine:
+    
+    **macOS:**
+    ```bash
+    brew tap mongodb/brew
+    brew install mongodb-community
+    brew services start mongodb-community
+    ```
+    
+    **Ubuntu/Debian:**
+    ```bash
+    sudo apt-get install mongodb
+    sudo systemctl start mongodb
+    ```
+    
+    **Windows:**
+    Download from [MongoDB Download Center](https://www.mongodb.com/try/download/community)
+    
+    ### Configuration
+    
+    ```bash .env
+    MONGO_URI=mongodb://localhost:27017/devtree
+    ```
+  </Tab>
+  
+  <Tab title="MongoDB Atlas">
+    ### Cloud Database (Recommended)
+    
+    <Steps>
+      <Step title="Create Account">
+        Sign up at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+      </Step>
+      
+      <Step title="Create Cluster">
+        - Create a new cluster (free tier available)
+        - Choose your preferred cloud provider and region
+        - Wait for cluster provisioning
+      </Step>
+      
+      <Step title="Configure Access">
+        - Create a database user with username and password
+        - Add your IP address to the IP whitelist
+        - For development, you can allow access from anywhere (0.0.0.0/0)
+      </Step>
+      
+      <Step title="Get Connection String">
+        - Click "Connect" on your cluster
+        - Choose "Connect your application"
+        - Copy the connection string
+      </Step>
+      
+      <Step title="Update .env">
+        ```bash
+        MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/devtree?retryWrites=true&w=majority
+        ```
+        
+        Replace `username`, `password`, and `cluster` with your actual values.
+      </Step>
+    </Steps>
+  </Tab>
+  
+  <Tab title="Docker">
+    ### Using Docker
+    
+    Run MongoDB in a Docker container:
+    
+    ```bash
+    docker run -d \
+      --name mongodb \
+      -p 27017:27017 \
+      -e MONGO_INITDB_DATABASE=devtree \
+      mongo:latest
+    ```
+    
+    ### Configuration
+    
+    ```bash .env
+    MONGO_URI=mongodb://localhost:27017/devtree
+    ```
+    
+    ### Docker Compose
+    
+    ```yaml docker-compose.yml
+    version: '3.8'
+    services:
+      mongodb:
+        image: mongo:latest
+        container_name: devtree-mongodb
+        ports:
+          - "27017:27017"
+        environment:
+          - MONGO_INITDB_DATABASE=devtree
+        volumes:
+          - mongodb_data:/data/db
+    
+    volumes:
+      mongodb_data:
+    ```
+  </Tab>
+</Tabs>
+
+## Mongoose Models
+
+Models define the structure of documents in MongoDB collections. They are created using Mongoose schemas.
+
+### User Model
+
+The User model is defined in `src/models/User.ts`:
+
+```typescript
+import mongoose, { Schema, Document } from "mongoose";
+
+export interface UserInterface extends Document {
+  handle: string;
+  username: string;
+  email: string;
+  password: string;
+  description: string;
+  imageUrl?: string;
+  links: string
+}
+
+const userSchema = new Schema({
+  handle: {
+    type: String,
+    required: true,
+    trim: true,
+    unique: true,
+  },
+  username: {
+    type: String,
+    required: true,
+    trim: true,
+  },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    match: /.+\@.+\..+/,
+    trim: true,
+  },
+  password: {
+    type: String,
+    required: true,
+    minLength: 6,
+    trim: true,
+  },
+  description: {
+    type: String,
+    required: false,
+    default: "",
+    trim: true,
+  },
+  imageUrl: {
+    type: String,
+    required: false,
+    trim: true,
+    default: "",
+  },
+  links: {
+    type: String,
+    default: "[]"
+  }
+});
+
+const User = mongoose.model<UserInterface>("User", userSchema);
+export default User;
+```
+
+### Schema Fields
+
+<Tabs>
+  <Tab title="Identification">
+    **handle**
+    - Type: `String`
+    - Required: `true`
+    - Unique: `true`
+    - The user's unique handle/username for their Dev-Tree page
+    - Example: `@johndoe`
+    
+    **email**
+    - Type: `String`
+    - Required: `true`
+    - Unique: `true`
+    - Must match email regex pattern `/.+\@.+\..+/`
+    - Used for authentication and communication
+  </Tab>
+  
+  <Tab title="Profile">
+    **username**
+    - Type: `String`
+    - Required: `true`
+    - Display name for the user
+    
+    **description**
+    - Type: `String`
+    - Optional (default: empty string)
+    - Bio or description for the user's profile
+    
+    **imageUrl**
+    - Type: `String`
+    - Optional (default: empty string)
+    - URL to user's profile image (stored in Cloudinary)
+  </Tab>
+  
+  <Tab title="Security">
+    **password**
+    - Type: `String`
+    - Required: `true`
+    - Minimum length: 6 characters
+    - Stored as a hashed value using bcrypt
+    - Never returned in API responses
+  </Tab>
+  
+  <Tab title="Links">
+    **links**
+    - Type: `String`
+    - Default: `"[]"` (empty JSON array as string)
+    - Stores user's social media links and other URLs
+    - Stored as JSON string for flexibility
+  </Tab>
+</Tabs>
+
+### Schema Validation
+
+The User schema includes several validation rules:
+
+<CodeGroup>
+```typescript Required Fields
+// These fields must be present
+handle: { required: true }
+username: { required: true }
+email: { required: true }
+password: { required: true }
+```
+
+```typescript Unique Constraints
+// These fields must be unique across all documents
+handle: { unique: true }
+email: { unique: true }
+```
+
+```typescript String Validation
+// Email must match regex pattern
+email: { match: /.+\@.+\..+/ }
+
+// Password must be at least 6 characters
+password: { minLength: 6 }
+
+// Trim whitespace from all strings
+handle: { trim: true }
+username: { trim: true }
+// ... all string fields
+```
+</CodeGroup>
+
+<Warning>
+Mongoose validation occurs before saving to the database. However, unique constraint violations will throw errors from MongoDB, not Mongoose validators.
+</Warning>
+
+## Working with Models
+
+### Creating Documents
+
+```typescript
+import User from "./models/User";
+
+// Create a new user
+const newUser = new User({
+  handle: "johndoe",
+  username: "John Doe",
+  email: "john@example.com",
+  password: "hashedPassword123",
+  description: "Full-stack developer"
+});
+
+await newUser.save();
+```
+
+### Querying Documents
+
+<CodeGroup>
+```typescript Find One
+// Find user by email
+const user = await User.findOne({ email: "john@example.com" });
+
+// Find user by handle
+const user = await User.findOne({ handle: "johndoe" });
+```
+
+```typescript Find Multiple
+// Find all users
+const users = await User.find();
+
+// Find users with a description
+const activeUsers = await User.find({ 
+  description: { $ne: "" } 
+});
+```
+
+```typescript Find by ID
+// Find user by MongoDB _id
+const user = await User.findById(userId);
+```
+</CodeGroup>
+
+### Updating Documents
+
+<CodeGroup>
+```typescript Update One
+// Update user description
+await User.findByIdAndUpdate(
+  userId,
+  { description: "Updated bio" },
+  { new: true } // Return updated document
+);
+```
+
+```typescript Update Multiple
+// Update multiple users
+await User.updateMany(
+  { imageUrl: "" },
+  { imageUrl: "default-avatar.png" }
+);
+```
+</CodeGroup>
+
+### Deleting Documents
+
+<CodeGroup>
+```typescript Delete One
+// Delete user by ID
+await User.findByIdAndDelete(userId);
+
+// Delete user by email
+await User.findOneAndDelete({ email: "john@example.com" });
+```
+
+```typescript Delete Multiple
+// Delete all users without profile images
+await User.deleteMany({ imageUrl: "" });
+```
+</CodeGroup>
+
+## TypeScript Integration
+
+The User model uses TypeScript interfaces for type safety:
+
+```typescript
+export interface UserInterface extends Document {
+  handle: string;
+  username: string;
+  email: string;
+  password: string;
+  description: string;
+  imageUrl?: string;
+  links: string
+}
+```
+
+### Usage with TypeScript
+
+```typescript
+import User, { UserInterface } from "./models/User";
+
+// TypeScript knows the shape of the user object
+const user: UserInterface | null = await User.findOne({ 
+  email: "john@example.com" 
+});
+
+if (user) {
+  // TypeScript autocomplete and type checking
+  console.log(user.username);
+  console.log(user.email);
+}
+```
+
+<Info>
+Extending `Document` gives you access to Mongoose document methods like `.save()`, `.remove()`, and virtual properties like `._id`.
+</Info>
+
+## Schema Design Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Validation" icon="check">
+    - Always validate required fields
+    - Use regex patterns for emails and URLs
+    - Set minimum/maximum lengths where appropriate
+    - Use enums for fields with fixed values
+  </Card>
+  
+  <Card title="Indexes" icon="magnifying-glass">
+    - Create indexes on frequently queried fields
+    - Use unique indexes for unique constraints
+    - Compound indexes for multi-field queries
+    - Monitor index usage in production
+  </Card>
+  
+  <Card title="References" icon="link">
+    - Use ObjectId references for relationships
+    - Decide between embedding vs referencing
+    - Use populate() for referenced documents
+    - Consider performance implications
+  </Card>
+  
+  <Card title="Security" icon="shield">
+    - Never store passwords in plain text
+    - Use bcrypt for password hashing
+    - Exclude sensitive fields from responses
+    - Validate and sanitize all inputs
+  </Card>
+</CardGroup>
+
+## Database Operations
+
+### Connection Management
+
+```typescript
+// Check connection status
+if (mongoose.connection.readyState === 1) {
+  console.log("Database connected");
+}
+
+// Close connection (usually not needed)
+await mongoose.connection.close();
+```
+
+### Error Handling
+
+```typescript
+try {
+  const user = await User.create(userData);
+} catch (error) {
+  if (error.code === 11000) {
+    // Duplicate key error
+    console.error("Email or handle already exists");
+  } else if (error.name === "ValidationError") {
+    // Mongoose validation error
+    console.error("Validation failed:", error.message);
+  } else {
+    // Other errors
+    console.error("Database error:", error);
+  }
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Development Setup" icon="code" href="/development/setup">
+    Set up your development environment
+  </Card>
+  <Card title="Configuration" icon="gear" href="/development/configuration">
+    Configure environment variables and services
+  </Card>
+</CardGroup>
