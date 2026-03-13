@@ -1,0 +1,86 @@
+{
+  "projectType": "api-service",
+  "projectName": "Dev-Tree Backend",
+  "projectDescription": "Backend API service for Dev-Tree, providing user authentication and profile management with handle-based routing.",
+  "theme": "mint",
+  "primaryColor": "#848c8e",
+  "lightColor": "#11161e",
+  "darkColor": "#cfd0d2",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/authentication",
+              "concepts/user-profiles",
+              "concepts/handles"
+            ]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "development/setup",
+              "development/configuration",
+              "development/database"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Authentication",
+            "pages": [
+              "api/auth/register",
+              "api/auth/login"
+            ]
+          },
+          {
+            "group": "User Management",
+            "pages": [
+              "api/users/get-current-user",
+              "api/users/get-by-handle",
+              "api/users/update-profile",
+              "api/users/upload-image"
+            ]
+          },
+          {
+            "group": "Utilities",
+            "pages": [
+              "api/utils/search-handle"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "JWT-based authentication system",
+    "User registration and login",
+    "Unique handle-based user profiles",
+    "Profile management with links and descriptions",
+    "Image upload integration with Cloudinary",
+    "Handle availability search",
+    "MongoDB data persistence"
+  ],
+  "publicApiSurface": [
+    "POST /auth/register - Register a new user",
+    "POST /auth/login - Authenticate and receive JWT token",
+    "GET /user - Get authenticated user profile",
+    "GET /:handle - Get user profile by handle",
+    "POST /search - Check handle availability",
+    "PATCH /user - Update user profile",
+    "POST /user/image - Upload user profile image"
+  ]
+}
